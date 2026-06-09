@@ -329,8 +329,7 @@ In Swagger UI:
    {
      "email": "test@example.com",
      "password": "secret123",
-     "first_name": "Test",
-     "last_name": "User"
+     "name": "Test User"
    }
    ```
 4. Click **Execute**
@@ -348,11 +347,24 @@ You should get a **201 Created** response with the new user data.
 
 Now you can call any protected endpoint (boards, sections, tickets) directly from Swagger UI.
 
+### Step 5: Reset a forgotten password
+
+In the React login screen, click **Forgot password?**, enter your email and a new password, then return to login.
+
+You can also test it in Swagger UI with `POST /auth/reset-password`:
+
+```json
+{
+  "email": "test@example.com",
+  "password": "newsecret123"
+}
+```
+
 ---
 
 ## 9. Running Tests
 
-The project includes an end-to-end test that exercises the full flow: register → login → create board → invite user → manage sections and tickets → check permissions.
+The project includes an end-to-end test that exercises password reset and the full flow: register → login → create board → invite user → manage sections and tickets → check permissions.
 
 ### Install the test dependency
 
@@ -621,7 +633,7 @@ uvicorn app.main:app --reload --port 8001
 ### Tests fail with `ModuleNotFoundError: No module named 'httpx'`
 
 ```bash
-pip install httpx
+pip install -r requirements.txt
 ```
 
 ### `--reload` not detecting changes
@@ -638,6 +650,15 @@ This rarely happens on some Windows configurations. Restart the server manually 
 uvicorn app.main:app --reload                          # Development server
 uvicorn app.main:app --host 0.0.0.0 --port 8000        # Network-accessible
 uvicorn app.main:app --workers 4                       # Production-style (no --reload)
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+npm run build
 ```
 
 ### Virtual environment

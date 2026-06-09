@@ -9,8 +9,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class UserBase(BaseModel):
     email: EmailStr
-    first_name: str = Field(..., min_length=1, max_length=50)
-    last_name: str = Field(..., min_length=1, max_length=50)
+    name: str = Field(..., min_length=1, max_length=100)
 
 
 class UserCreate(UserBase):
@@ -28,6 +27,11 @@ class UserOut(UserBase):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class PasswordReset(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=6, max_length=128)
 
 
 class Token(BaseModel):
@@ -131,18 +135,17 @@ class TicketDetail(TicketOut):
 
 
 class SectionDetail(SectionOut):
-    tickets: List[TicketDetail] = []
+    tickets: List[TicketDetail] = Field(default_factory=list)
 
 
 class BoardMemberOut(BaseModel):
     user_id: int
     email: EmailStr
-    first_name: str
-    last_name: str
+    name: str
     is_owner: bool
 
 
 class BoardDetail(BoardOut):
-    sections: List[SectionDetail] = []
-    members: List[BoardMemberOut] = []
-    invitations: List[InvitationOut] = []
+    sections: List[SectionDetail] = Field(default_factory=list)
+    members: List[BoardMemberOut] = Field(default_factory=list)
+    invitations: List[InvitationOut] = Field(default_factory=list)

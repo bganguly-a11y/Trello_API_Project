@@ -93,7 +93,7 @@ def get_board_detail(board_id: int,
     members = [
         BoardMemberOut(
             user_id=u.id, email=u.email,
-            first_name=u.first_name, last_name=u.last_name,
+            name=u.name,
             is_owner=m.is_owner,
         )
         for m, u in member_rows

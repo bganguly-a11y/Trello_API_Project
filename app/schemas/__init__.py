@@ -7,6 +7,7 @@ from app.schemas.schemas import (
     InvitationAccept,
     InvitationOut,
     LoginRequest,
+    PasswordReset,
     SectionCreate,
     SectionDetail,
     SectionOut,

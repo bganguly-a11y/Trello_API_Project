@@ -3,11 +3,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+from app.core.deps import get_current_user
 from app.core.security import (create_access_token, hash_password,
                                 verify_password)
 from app.database import get_db
 from app.models import User
-from app.schemas import Token, UserCreate, UserOut
+from app.schemas import PasswordReset, Token, UserCreate, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -25,8 +26,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     user = User(
         email=payload.email,
         hashed_password=hash_password(payload.password),
-        first_name=payload.first_name,
-        last_name=payload.last_name,
+        name=payload.name,
     )
     db.add(user)
     db.commit()
@@ -53,3 +53,22 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(),
         )
     token = create_access_token(subject=str(user.id))
     return Token(access_token=token)
+
+
+@router.post("/reset-password", response_model=UserOut)
+def reset_password(payload: PasswordReset, db: Session = Depends(get_db)):
+    """Reset a user's password by email."""
+    user = db.query(User).filter(User.email == payload.email).first()
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user.hashed_password = hash_password(payload.password)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.get("/me", response_model=UserOut)
+def read_current_user(user: User = Depends(get_current_user)):
+    """Return the authenticated user's profile."""
+    return user

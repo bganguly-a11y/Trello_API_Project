@@ -11,6 +11,7 @@ A FastAPI implementation of a Trello-style project management API. Built as Part
 - CRUD for tickets (movable between sections on the same board)
 - Permission model: board owners can edit anything; invited members can only edit tickets they created
 - Auto-generated interactive docs at `/docs` (Swagger UI) and `/redoc` (ReDoc)
+- React frontend for managing boards, sections, tickets, and invitations
 - Full end-to-end test suite
 
 ## Tech stack
@@ -22,6 +23,7 @@ A FastAPI implementation of a Trello-style project management API. Built as Part
 - **passlib + bcrypt** — password hashing
 - **SQLite** — default DB (swap `DATABASE_URL` for Postgres/MySQL)
 - **Uvicorn** — ASGI server
+- **React + Vite** — frontend application
 
 ## Project structure
 
@@ -46,6 +48,12 @@ trello-api/
 │       └── invitations.py
 ├── tests/
 │   └── test_api.py          # End-to-end tests
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx          # React Trello UI
+│   │   └── styles.css       # Frontend styling
+│   ├── package.json
+│   └── vite.config.js       # Dev proxy to FastAPI
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
@@ -99,7 +107,28 @@ uvicorn app.main:app --reload
 
 The server starts on `http://127.0.0.1:8000`. Database tables are created automatically on first run (SQLite file `trello.db`).
 
-### 6. Open the interactive docs
+### 6. Run the React frontend
+
+Open a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The React app starts on `http://127.0.0.1:5173` and proxies API requests to FastAPI.
+
+To serve the production frontend from FastAPI:
+
+```bash
+cd frontend
+npm run build
+```
+
+Restart FastAPI and open `http://127.0.0.1:8000/frontend`.
+
+### 7. Open the interactive docs
 
 - Swagger UI: http://127.0.0.1:8000/docs
 - ReDoc: http://127.0.0.1:8000/redoc
@@ -110,6 +139,7 @@ The server starts on `http://127.0.0.1:8000`. Database tables are created automa
 |---|---|---|---|
 | POST | `/auth/register` | Create a new account | No |
 | POST | `/auth/login` | Get a JWT access token | No |
+| POST | `/auth/reset-password` | Reset password by email | No |
 | POST | `/boards/` | Create a board | Yes |
 | GET | `/boards/` | List boards I'm a member of | Yes |
 | GET | `/boards/{id}` | Detailed board view | Member |
@@ -134,11 +164,16 @@ The server starts on `http://127.0.0.1:8000`. Database tables are created automa
 # 1. Register
 curl -X POST http://127.0.0.1:8000/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","password":"secret123","first_name":"Alice","last_name":"A"}'
+  -d '{"email":"alice@example.com","password":"secret123","name":"Alice A"}'
 
 # 2. Login (form-encoded, OAuth2 standard)
 TOKEN=$(curl -s -X POST http://127.0.0.1:8000/auth/login \
   -d "username=alice@example.com&password=secret123" | python -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+
+# Optional: reset a forgotten password
+curl -X POST http://127.0.0.1:8000/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com","password":"newsecret123"}'
 
 # 3. Create a board
 curl -X POST http://127.0.0.1:8000/boards/ \
@@ -153,12 +188,11 @@ curl http://127.0.0.1:8000/boards/ -H "Authorization: Bearer $TOKEN"
 ## Running tests
 
 ```bash
-pip install httpx
 python tests/test_api.py
 ```
 
 The test runs an in-memory SQLite database and exercises:
-- Registration, login, JWT auth
+- Registration, login, password reset, JWT auth
 - Board creation and access isolation between users
 - Section CRUD
 - Invitation creation, acceptance, and reuse blocking
@@ -191,5 +225,6 @@ For real production use, replace the auto `Base.metadata.create_all()` in `app/m
 
 - No DB file or `.env` is committed — both are listed in `.gitignore`.
 - Schema is created automatically on first run.
+- User registration accepts a single `name` field with `email` and `password`.
 - All endpoints validate inputs via Pydantic and return clean 4xx errors with detail messages.
 - Auth uses bearer JWT tokens; the Swagger UI "Authorize" button works with the `/auth/login` endpoint.

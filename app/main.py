@@ -1,12 +1,15 @@
 """Application entrypoint. Run with: uvicorn app.main:app --reload"""
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from app.database import Base, engine
+from app.database import init_db
 from app.routers import auth, boards, invitations, sections, tickets
 
 # In production switch to Alembic migrations. For dev, this is convenient.
-Base.metadata.create_all(bind=engine)
+init_db()
 
 app = FastAPI(
     title="Trello Clone REST API",
@@ -28,6 +31,11 @@ app.include_router(boards.router)
 app.include_router(sections.router)
 app.include_router(tickets.router)
 app.include_router(invitations.router)
+
+frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/frontend", StaticFiles(directory=frontend_dist, html=True),
+              name="frontend")
 
 
 @app.get("/", tags=["health"])

@@ -39,10 +39,9 @@ def auth_headers(token: str) -> dict:
 
 
 def register_and_login(email: str, password: str = "secret123",
-                        first: str = "Test", last: str = "User") -> str:
+                        name: str = "Test User") -> str:
     r = client.post("/auth/register", json={
-        "email": email, "password": password,
-        "first_name": first, "last_name": last,
+        "email": email, "password": password, "name": name,
     })
     assert r.status_code == 201, r.text
     # Login uses OAuth2PasswordRequestForm — submit form-encoded
@@ -52,10 +51,36 @@ def register_and_login(email: str, password: str = "secret123",
     return r.json()["access_token"]
 
 
+def test_password_reset():
+    email = "reset@example.com"
+    old_password = "secret123"
+    new_password = "newsecret123"
+
+    r = client.post("/auth/register", json={
+        "email": email, "password": old_password, "name": "Reset User",
+    })
+    assert r.status_code == 201, r.text
+
+    r = client.post("/auth/reset-password", json={
+        "email": email, "password": new_password,
+    })
+    assert r.status_code == 200, r.text
+    assert r.json()["email"] == email
+
+    r = client.post("/auth/login",
+                    data={"username": email, "password": old_password})
+    assert r.status_code == 401
+
+    r = client.post("/auth/login",
+                    data={"username": email, "password": new_password})
+    assert r.status_code == 200, r.text
+    assert "access_token" in r.json()
+
+
 def test_full_flow():
     # 1. Register two users: Alice (owner) and Bob (invited)
-    alice_token = register_and_login("alice@example.com", first="Alice")
-    bob_token = register_and_login("bob@example.com", first="Bob")
+    alice_token = register_and_login("alice@example.com", name="Alice")
+    bob_token = register_and_login("bob@example.com", name="Bob")
 
     # 2. Alice creates a board
     r = client.post("/boards/",
@@ -181,4 +206,5 @@ def test_full_flow():
 
 
 if __name__ == "__main__":
+    test_password_reset()
     test_full_flow()
