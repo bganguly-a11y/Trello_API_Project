@@ -8,7 +8,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    DATABASE_URL: str = "sqlite:///./trello.db"
+    # Default to the documented local PostgreSQL database for development.
+    DATABASE_URL: str = "postgresql://postgres:Binbud123%23@localhost:5433/trello_clone"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

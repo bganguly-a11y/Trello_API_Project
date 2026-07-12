@@ -19,9 +19,9 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    name = Column(String, nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    name = Column(String(100), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # A user can own many boards (Board.owner_id).
@@ -43,8 +43,8 @@ class Board(Base):
     __tablename__ = "boards"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    description = Column(String, nullable=True)
+    name = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -79,8 +79,8 @@ class Section(Base):
     __tablename__ = "sections"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    description = Column(String, nullable=True)
+    name = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=True)
     # Parent board CANNOT be changed — enforced in routers, not at DB level.
     board_id = Column(Integer, ForeignKey("boards.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -95,8 +95,8 @@ class Ticket(Base):
     __tablename__ = "tickets"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    description = Column(String, nullable=True)
+    name = Column(String(200), nullable=False)
+    description = Column(String(2000), nullable=True)
     section_id = Column(Integer, ForeignKey("sections.id"), nullable=False)
     creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -115,7 +115,7 @@ class Invitation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     board_id = Column(Integer, ForeignKey("boards.id"), nullable=False)
-    token = Column(String, unique=True, index=True, nullable=False)
+    token = Column(String(255), unique=True, index=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     used_at = Column(DateTime, nullable=True)
 

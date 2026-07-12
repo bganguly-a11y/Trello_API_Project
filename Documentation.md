@@ -54,34 +54,65 @@ If `python` doesn't work, try `python3`. On Windows, you may need to use `py` in
 
 ---
 
-## 2. Project Setup
+## 2. Project Setup & Quickstart
 
-### Option A: Clone from GitHub
+There are three ways to get this project running on your local machine:
 
+### Method A: Docker Compose (Recommended)
+This runs the entire stack (PostgreSQL, FastAPI Backend, and React Frontend) inside containerized environments. No need to install Python or Node.js on your host system.
+
+1. Ensure **Docker Desktop** is open and running.
+2. Build and start the containers in detached mode:
+   ```bash
+   docker compose up --build -d
+   ```
+3. Access the services:
+   * **Frontend UI**: [http://localhost](http://localhost)
+   * **Backend API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+4. To stop the containers:
+   ```bash
+   docker compose down
+   ```
+
+---
+
+### Method B: Automated Dev Script (`start-dev.sh`)
+This script automates setting up your Python virtual environment (using the most appropriate Python 3.11/3.10/3 version), installing both backend and frontend dependencies, creating config files, and launching both servers concurrently.
+
+1. Make the script executable:
+   ```bash
+   chmod +x start-dev.sh
+   ```
+2. Run the script:
+   ```bash
+   ./start-dev.sh
+   ```
+3. Access the services:
+   * **Frontend UI**: [http://localhost:5173](http://localhost:5173)
+   * **Backend API**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+
+---
+
+### Method C: Manual Step-by-Step Setup
+Use this method if you want full control over each component's initialization.
+
+#### 1. Clone or copy the files
+Change directory to the project folder:
 ```bash
-git clone <your-repository-url>
-cd trello-api
+cd trello-clone
 ```
 
-### Option B: Start fresh
-
-If you're reconstructing the project from the source files:
-
-```bash
-mkdir trello-api
-cd trello-api
-# Copy or unzip the project files here
+After this step, your working directory contains:
 ```
-
-After this step, your working directory should contain:
-
-```
-trello-api/
-├── app/
+trello-clone/
+├── backend/
+│   ├── app/
+│   └── requirements.txt
+├── frontend/
 ├── tests/
-├── requirements.txt
 ├── .env.example
-├── .gitignore
+├── docker-compose.yml
+├── start-dev.sh
 └── README.md
 ```
 
@@ -89,24 +120,20 @@ trello-api/
 
 ## 3. Virtual Environment
 
-A virtual environment isolates your project's Python dependencies so they don't conflict with other projects or your system Python. **Always use one.**
+A virtual environment isolates your project's Python dependencies so they don't conflict with other projects.
 
 ### Create the virtual environment
-
+Ensure you are using **Python 3.10+** (Python 3.11 is recommended):
 ```bash
 # Linux / macOS
-python3 -m venv venv
+python3.11 -m venv venv
 
-# Windows (Command Prompt or PowerShell)
+# Windows
 python -m venv venv
 ```
 
-This creates a `venv/` folder containing an isolated Python installation.
-
 ### Activate the virtual environment
-
-You must activate the venv every time you open a new terminal to work on the project.
-
+You must activate the `venv` every time you open a new terminal window:
 ```bash
 # Linux / macOS
 source venv/bin/activate
@@ -138,7 +165,7 @@ deactivate
 With the virtual environment activated, install all required packages:
 
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 This installs:
@@ -160,7 +187,7 @@ Verify the installation:
 pip list
 ```
 
-You should see all the packages from `requirements.txt`.
+You should see all the packages from `backend/requirements.txt`.
 
 ### If you encounter installation errors
 
@@ -225,41 +252,41 @@ DATABASE_URL=sqlite:///./trello.db
 
 ## 6. Database Setup
 
-The project uses **SQLite by default** — no separate database server is needed. SQLite stores everything in a single file (`trello.db`).
-
-### Automatic table creation
-
-You don't need to run any migrations or SQL scripts. When the server starts for the first time, it automatically creates all the tables in `app/main.py`:
-
-```python
-Base.metadata.create_all(bind=engine)
+The project is configured for **PostgreSQL** by default, connecting via the connection string in your `.env` file:
+```env
+DATABASE_URL=postgresql://postgres:Binbud123%23@localhost:5433/trello_clone
 ```
 
-This creates 6 tables:
-- `users` — registered users
-- `boards` — project boards
-- `board_members` — who has access to which board
-- `sections` — columns on a board (To Do, In Progress, etc.)
-- `tickets` — task cards inside sections
-- `invitations` — single-use tokens to invite users to a board
+### Option A: Using PostgreSQL (Default)
+Ensure your PostgreSQL database server is running (either locally or through Docker using `docker compose up -d`). The application expects a database named `trello_clone` to be created.
 
-### Where the database file lives
-
-After the server runs for the first time, you'll see `trello.db` appear in the project root. This file contains all your data.
-
-### Resetting the database
-
-To start with a clean database (e.g., during development):
-
-```bash
-# Linux / macOS
-rm trello.db
-
-# Windows
-del trello.db
+### Option B: Using SQLite (Local Fallback)
+If you do not want to run PostgreSQL, you can change the connection string in your `.env` to use SQLite. SQLite stores your entire database in a single local file:
+```env
+DATABASE_URL=sqlite:///./trello.db
 ```
 
-The next time you start the server, a fresh empty database will be created.
+### Automatic Table Creation
+You do not need to run any manual SQL schema scripts. When the FastAPI server starts, SQLAlchemy automatically registers and creates the required database tables:
+* `users` — user accounts (name, email, password hash)
+* `boards` — boards details (name, description, owner)
+* `board_members` — membership join table (which user has access to which board)
+* `sections` — columns on a board (To Do, In Progress, etc.)
+* `tickets` — task cards inside sections
+* `invitations` — single-use invite tokens
+
+### Resetting the Database
+To reset your database during development:
+* **For SQLite**: Simply delete the `trello.db` file:
+  ```bash
+  rm trello.db
+  ```
+* **For PostgreSQL**: Run the following commands in your database terminal:
+  ```sql
+  DROP DATABASE trello_clone;
+  CREATE DATABASE trello_clone;
+  ```
+
 
 ---
 
@@ -470,7 +497,7 @@ HTTP request
 
 ```bash
 # 1. Open a terminal in the project folder
-cd trello-api
+cd trello-clone
 
 # 2. Activate the virtual environment
 source venv/bin/activate            # Linux/macOS
@@ -480,7 +507,7 @@ venv\Scripts\activate               # Windows
 git pull
 
 # 4. Install any new dependencies
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
 # 5. Start the server
 uvicorn app.main:app --reload
@@ -493,7 +520,7 @@ python tests/test_api.py
 
 1. **Define the data shape** — add or modify Pydantic schemas in `app/schemas/schemas.py`.
 2. **Update the database model** — modify SQLAlchemy classes in `app/models/models.py` if needed.
-3. **Reset the database** — `rm trello.db` to recreate tables with the new schema (development only).
+3. **Reset the database** — recreate the database (development only).
 4. **Add the endpoint** — write the route handler in the appropriate router file.
 5. **Test it** — try the endpoint in Swagger UI at `/docs`.
 6. **Add a test case** — extend `tests/test_api.py` to cover the new behavior.
@@ -503,8 +530,8 @@ python tests/test_api.py
 
 ```bash
 pip install <package-name>
-pip freeze > requirements.txt    # Update requirements.txt
-git add requirements.txt
+pip freeze > backend/requirements.txt    # Update backend requirements
+git add backend/requirements.txt
 ```
 
 ### Code style
@@ -517,7 +544,7 @@ git add requirements.txt
 
 ## 12. Switching to PostgreSQL (optional)
 
-SQLite is fine for development. For production, use PostgreSQL.
+PostgreSQL is the default database format in `.env` and Docker. If you are running locally without Docker and want to switch back to PostgreSQL:
 
 ### Step 1: Install PostgreSQL
 
@@ -532,9 +559,9 @@ sudo -u postgres psql
 ```
 
 ```sql
-CREATE DATABASE trello;
+CREATE DATABASE trello_clone;
 CREATE USER trello_user WITH PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE trello TO trello_user;
+GRANT ALL PRIVILEGES ON DATABASE trello_clone TO trello_user;
 \q
 ```
 
@@ -542,8 +569,9 @@ GRANT ALL PRIVILEGES ON DATABASE trello TO trello_user;
 
 ```bash
 pip install psycopg2-binary
-echo "psycopg2-binary==2.9.9" >> requirements.txt
+echo "psycopg2-binary==2.9.12" >> backend/requirements.txt
 ```
+
 
 ### Step 4: Update `.env`
 

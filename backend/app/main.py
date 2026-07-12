@@ -32,7 +32,7 @@ app.include_router(sections.router)
 app.include_router(tickets.router)
 app.include_router(invitations.router)
 
-frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
     app.mount("/frontend", StaticFiles(directory=frontend_dist, html=True),
               name="frontend")

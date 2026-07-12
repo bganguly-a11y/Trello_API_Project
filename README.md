@@ -21,14 +21,14 @@ A FastAPI implementation of a Trello-style project management API. Built as Part
 - **Pydantic v2** — request/response validation
 - **python-jose** — JWT signing/verification
 - **passlib + bcrypt** — password hashing
-- **SQLite** — default DB (swap `DATABASE_URL` for Postgres/MySQL)
+- **PostgreSQL 18** — relational database (via `psycopg2-binary`)
 - **Uvicorn** — ASGI server
 - **React + Vite** — frontend application
 
 ## Project structure
 
 ```
-trello-api/
+trello-clone/
 ├── app/
 │   ├── main.py              # FastAPI app, router registration, CORS
 │   ├── config.py            # Settings loaded from .env
@@ -60,19 +60,58 @@ trello-api/
 └── README.md
 ```
 
-## Setup (from scratch)
+## Setup and Execution
 
-### 1. Clone the repo
+There are three ways to set up and run this application locally:
 
+---
+
+### Option A: Running with Docker Compose (Recommended)
+This runs the entire stack (Postgres Database, FastAPI Backend, and React Frontend via Nginx) inside containerized environments without installing Python or Node.js locally.
+
+1. Ensure **Docker Desktop** is open and running.
+2. Build and start the containers in detached mode:
+   ```bash
+   docker compose up --build -d
+   ```
+3. Access the services:
+   * **Frontend UI**: [http://localhost](http://localhost)
+   * **Backend API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+4. To stop the containers:
+   ```bash
+   docker compose down
+   ```
+
+---
+
+### Option B: Running with Automated Dev Script (`start-dev.sh`)
+This automates the configuration, packages installation, and runs both servers concurrently.
+
+1. Make the script executable:
+   ```bash
+   chmod +x start-dev.sh
+   ```
+2. Run the script:
+   ```bash
+   ./start-dev.sh
+   ```
+3. Access the services:
+   * **Frontend UI**: [http://localhost:5173](http://localhost:5173)
+   * **Backend API**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+
+---
+
+### Option C: Manual Setup (From Scratch)
+
+#### 1. Clone the repo
 ```bash
 git clone <your-repo-url>
-cd trello-api
+cd trello-clone
 ```
 
-### 2. Create a virtual environment
-
+#### 2. Create and Activate a Virtual Environment
 ```bash
-# Linux / macOS
+# Linux / macOS (Python 3.10+)
 python3 -m venv venv
 source venv/bin/activate
 
@@ -81,54 +120,48 @@ python -m venv venv
 venv\Scripts\activate
 ```
 
-### 3. Install dependencies
-
+#### 3. Install Dependencies
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
-### 4. Create `.env` from the example
+#### 4. Set up PostgreSQL
+Create the database:
+```bash
+psql -U <your-pg-user> -d postgres -c "CREATE DATABASE trello_clone;"
+```
 
+#### 5. Configure Environment Variables
+Create a `.env` file from the template:
 ```bash
 cp .env.example .env
 ```
-
-Generate a secure secret key and paste it into `.env`:
-
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(32))"
+Update the settings in your `.env`:
+```env
+# Generate a strong key with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+SECRET_KEY=<your-secret-key>
+DATABASE_URL=postgresql://<user>:<password>@localhost:<port>/trello_clone
 ```
 
-### 5. Run the server
-
+#### 6. Run the FastAPI backend
 ```bash
+cd backend
 uvicorn app.main:app --reload
 ```
+The database tables are created automatically on the first run.
 
-The server starts on `http://127.0.0.1:8000`. Database tables are created automatically on first run (SQLite file `trello.db`).
-
-### 6. Run the React frontend
-
-Open a second terminal:
-
+#### 7. Run the React frontend
+Open a new terminal window:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-The React app starts on `http://127.0.0.1:5173` and proxies API requests to FastAPI.
+---
 
-To serve the production frontend from FastAPI:
+### Open the interactive docs
 
-```bash
-cd frontend
-npm run build
-```
-
-Restart FastAPI and open `http://127.0.0.1:8000/frontend`.
-
-### 7. Open the interactive docs
 
 - Swagger UI: http://127.0.0.1:8000/docs
 - ReDoc: http://127.0.0.1:8000/redoc
@@ -158,48 +191,21 @@ Restart FastAPI and open `http://127.0.0.1:8000/frontend`.
 | PATCH | `/tickets/{id}` | Update a ticket | Owner or creator |
 | DELETE | `/tickets/{id}` | Delete a ticket | Owner or creator |
 
-## Quick example with curl
-
-```bash
-# 1. Register
-curl -X POST http://127.0.0.1:8000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","password":"secret123","name":"Alice A"}'
-
-# 2. Login (form-encoded, OAuth2 standard)
-TOKEN=$(curl -s -X POST http://127.0.0.1:8000/auth/login \
-  -d "username=alice@example.com&password=secret123" | python -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
-
-# Optional: reset a forgotten password
-curl -X POST http://127.0.0.1:8000/auth/reset-password \
-  -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","password":"newsecret123"}'
-
-# 3. Create a board
-curl -X POST http://127.0.0.1:8000/boards/ \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Capstone","description":"Trello clone"}'
-
-# 4. List my boards
-curl http://127.0.0.1:8000/boards/ -H "Authorization: Bearer $TOKEN"
-```
 
 ## Running tests
 
 ```bash
-python tests/test_api.py
+cd backend
+python -m pytest tests/ -v
 ```
 
-The test runs an in-memory SQLite database and exercises:
+Tests use an **in-memory SQLite database** (independent of PostgreSQL) and exercise:
 - Registration, login, password reset, JWT auth
 - Board creation and access isolation between users
 - Section CRUD
 - Invitation creation, acceptance, and reuse blocking
 - Ticket creation, move-within-board, cross-board move blocking
 - Permission checks (owner vs member, creator-only ticket editing)
-
-Expected output: `ALL TESTS PASSED`.
 
 ## Permission rules in plain English
 
@@ -209,21 +215,26 @@ Expected output: `ALL TESTS PASSED`.
 - A **ticket** can be moved between sections, but only within the same board.
 - An **invitation token** is single-use; reusing it returns 400.
 
-## Switching to PostgreSQL
+## Database
 
-Update `DATABASE_URL` in `.env`:
+The application uses **PostgreSQL** as its primary database. The connection is configured via the `DATABASE_URL` environment variable in `.env`.
 
-```
-DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/trello
-```
+### PostgreSQL Tables
 
-Add `psycopg2-binary` to `requirements.txt` and reinstall.
+| Table | Purpose |
+|-------|--------|
+| `users` | User accounts (email, password hash, name) |
+| `boards` | Board details (name, description, owner) |
+| `sections` | Sections within boards |
+| `tickets` | Tickets within sections (creator, assignee) |
+| `board_members` | User ↔ Board membership join table |
+| `invitations` | One-time invite tokens for board access |
 
-For real production use, replace the auto `Base.metadata.create_all()` in `app/main.py` with **Alembic** migrations.
+For production use, replace the auto `Base.metadata.create_all()` in `app/main.py` with **Alembic** migrations.
 
 ## Notes for grading
 
-- No DB file or `.env` is committed — both are listed in `.gitignore`.
+- No `.env` file is committed — it is listed in `.gitignore`.
 - Schema is created automatically on first run.
 - User registration accepts a single `name` field with `email` and `password`.
 - All endpoints validate inputs via Pydantic and return clean 4xx errors with detail messages.

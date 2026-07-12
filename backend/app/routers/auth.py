@@ -17,16 +17,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
              status_code=status.HTTP_201_CREATED)
 def register(payload: UserCreate, db: Session = Depends(get_db)):
     """Create a new user. Email must be unique."""
-    existing = db.query(User).filter(User.email == payload.email).first()
+    email = payload.email.strip().lower()
+    existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             detail="A user with this email already exists",
         )
     user = User(
-        email=payload.email,
+        email=email,
         hashed_password=hash_password(payload.password),
-        name=payload.name,
+        name=payload.name.strip(),
     )
     db.add(user)
     db.commit()
@@ -43,7 +44,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(),
       - password = password
     Returns a JWT access token.
     """
-    user = db.query(User).filter(User.email == form_data.username).first()
+    email = form_data.username.strip().lower()
+    user = db.query(User).filter(User.email == email).first()
     if user is None or not verify_password(form_data.password,
                                             user.hashed_password):
         raise HTTPException(
@@ -58,7 +60,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(),
 @router.post("/reset-password", response_model=UserOut)
 def reset_password(payload: PasswordReset, db: Session = Depends(get_db)):
     """Reset a user's password by email."""
-    user = db.query(User).filter(User.email == payload.email).first()
+    email = payload.email.strip().lower()
+    user = db.query(User).filter(User.email == email).first()
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
 

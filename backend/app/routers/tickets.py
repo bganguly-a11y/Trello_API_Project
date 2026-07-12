@@ -1,5 +1,5 @@
 """Ticket CRUD. Section can change but must remain on the same board."""
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -14,7 +14,7 @@ router = APIRouter(tags=["tickets"])
 
 
 def _validate_assignee(db: Session, board_id: int,
-                        assignee_id: int | None) -> None:
+                        assignee_id: Optional[int]) -> None:
     """Make sure assignee (if set) is a member of the board."""
     if assignee_id is None:
         return
